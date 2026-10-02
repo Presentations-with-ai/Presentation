@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Качество продуктов питания и его контроль</title>
+<meta name="theme-color" content="#08110d" />
+<style>
+  :root{
+    --bg:#07100c;
+    --panel:#0d1812;
+    --panel2:#122219;
+    --text:#f4f7f4;
+    --muted:#9fb0a7;
+    --green:#69e49c;
+    --lime:#b8f36b;
+    --orange:#ffb14a;
+    --red:#ff6f6f;
+    --cyan:#78e7dd;
+    --line:rgba(255,255,255,.11);
+    --shadow: 0 30px 80px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--text)}
+  body{position:relative}
+  .noise{
+    position:fixed; inset:0; pointer-events:none; opacity:.06; z-index:20;
+    background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.45'/%3E%3C/svg%3E");
+    mix-blend-mode:soft-light
+  }
+  .ambient{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:0}
+  .orb{position:absolute;border-radius:50%;filter:blur(80px);opacity:.17}
+  .orb.a{width:420px;height:420px;background:var(--green);left:-120px;top:-100px}
+  .orb.b{width:380px;height:380px;background:var(--orange);right:-120px;bottom:-120px}
+  .orb.c{width:260px;height:260px;background:var(--cyan);right:20%;top:15%;opacity:.08}
+  .deck{height:100%;width:100%;position:relative;z-index:2}
+  .slide{
+    position:absolute; inset:0; padding:7vh 7vw 8vh;
+    opacity:0; visibility:hidden; transform:scale(.985);
+    display:grid; grid-template-rows:auto 1fr auto;
+  }
+  .slide.active{opacity:1;visibility:visible;transform:scale(1)}
+  .topbar{display:flex;justify-content:space-between;align-items:center;gap:18px}
+  .kicker{font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--green);font-weight:800}
+  .slide-no{font-size:12px;color:var(--muted);letter-spacing:.12em}
+  .content{align-self:center;min-width:0}
+  h1,h2,h3,p{margin:0}
+  h1{font-size:clamp(48px,7.8vw,112px);line-height:.93;letter-spacing:-.055em;max-width:1150px}
+  h2{font-size:clamp(38px,5.2vw,78px);line-height:.98;letter-spacing:-.045em;max-width:1100px}
+  h3{font-size:clamp(22px,2.1vw,34px);line-height:1.08}
+  .lead{font-size:clamp(18px,1.8vw,28px);line-height:1.45;color:#dfe7e2;max-width:900px;margin-top:26px}
+  .muted{color:var(--muted)}
+  .accent{color:var(--green)}
+  .orange{color:var(--orange)}
+  .red{color:var(--red)}
+  .cyan{color:var(--cyan)}
+  .footer{display:flex;align-items:center;justify-content:space-between;gap:20px;color:var(--muted);font-size:12px}
+  .hint{display:flex;gap:10px;align-items:center}
+  .key{border:1px solid var(--line);padding:5px 8px;border-radius:8px;background:rgba(255,255,255,.03);color:#cbd6cf}
+  .grid2{display:grid;grid-template-columns:1.05fr .95fr;gap:5vw;align-items:center}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:30px}
+  .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:30px}
+  .card{
+    border:1px solid var(--line); background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.025));
+    border-radius:24px;padding:24px;box-shadow:var(--shadow);backdrop-filter:blur(10px)
+  }
+  .card p{color:#c7d2cb;line-height:1.5;margin-top:10px;font-size:15px}
+  .icon{
+    width:48px;height:48px;border-radius:15px;display:grid;place-items:center;
+    background:rgba(105,228,156,.11);border:1px solid rgba(105,228,156,.25);font-size:23px;margin-bottom:18px
+  }
+  .metric{font-size:clamp(48px,6.2vw,86px);font-weight:900;letter-spacing:-.06em}
+  .metric-label{font-size:14px;color:var(--muted);margin-top:7px}
+  .pill{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:rgba(255,255,255,.04);padding:9px 13px;border-radius:999px;color:#d7e1db;font-size:13px}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--green)}
+  .bars{display:grid;gap:14px;margin-top:26px}
+  .bar-row{display:grid;grid-template-columns:170px 1fr 54px;gap:14px;align-items:center}
+  .bar-row span{font-size:14px;color:#d8e1dc}
+  .track{height:12px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden}
+  .fill{height:100%;width:0;border-radius:inherit;background:linear-gradient(90deg,var(--green),var(--lime))}
+  .ring{
+    width:min(33vw,360px);aspect-ratio:1;border-radius:50%;display:grid;place-items:center;
+    background:conic-gradient(var(--green) 0 78%, rgba(255,255,255,.08) 78% 100%);
+    position:relative;box-shadow:var(--shadow)
+  }
+  .ring:before{content:"";position:absolute;inset:24px;border-radius:50%;background:#0a140f;border:1px solid var(--line)}
+  .ring-inner{position:relative;text-align:center;z-index:1}
+  .ring strong{font-size:clamp(48px,6vw,78px);letter-spacing:-.05em}
+  .ring small{display:block;color:var(--muted);margin-top:4px}
+  .hazard{min-height:240px;position:relative;overflow:hidden}
+  .hazard:after{content:"";position:absolute;width:140px;height:140px;border-radius:50%;right:-35px;bottom:-35px;filter:blur(6px);opacity:.18}
+  .hazard.bio:after{background:var(--green)} .hazard.chem:after{background:var(--orange)} .hazard.phys:after{background:var(--cyan)}
+  .timeline{display:grid;grid-template-columns:repeat(5,1fr);gap:0;margin-top:36px;position:relative}
+  .timeline:before{content:"";position:absolute;left:7%;right:7%;top:28px;height:2px;background:rgba(255,255,255,.12)}
+  .step{text-align:center;position:relative;padding:0 10px}
+  .step .n{width:58px;height:58px;border-radius:50%;display:grid;place-items:center;margin:0 auto 14px;background:#0e1a13;border:1px solid rgba(105,228,156,.35);font-weight:800;color:var(--green);position:relative;z-index:2}
+  .step p{font-size:13px;color:var(--muted);line-height:1.45}
+  .haccp{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:28px}
+  .haccp .item{border:1px solid var(--line);border-radius:18px;padding:18px;display:flex;gap:14px;align-items:flex-start;background:rgba(255,255,255,.035)}
+  .haccp b{color:var(--green);font-size:22px;min-width:28px}
+  .haccp span{font-size:14px;color:#d7dfda;line-height:1.4}
+  .lab-list{display:grid;gap:12px;margin-top:26px}
+  .lab-item{display:grid;grid-template-columns:54px 1fr auto;align-items:center;gap:14px;border-bottom:1px solid var(--line);padding:12px 0}
+  .lab-item .tag{color:var(--muted);font-size:12px;border:1px solid var(--line);padding:6px 10px;border-radius:999px}
+  .thermo{height:320px;width:98px;border-radius:50px;border:1px solid var(--line);background:rgba(255,255,255,.04);padding:11px;position:relative;margin:auto}
+  .thermo .tube{height:100%;border-radius:40px;background:rgba(255,255,255,.06);overflow:hidden;display:flex;align-items:flex-end}
+  .thermo .level{height:0;width:100%;border-radius:40px;background:linear-gradient(180deg,var(--orange),var(--red))}
+  .label-demo{border:1px solid var(--line);border-radius:22px;padding:22px;background:#f1f2e9;color:#0e1410;box-shadow:var(--shadow);transform:rotate(-2deg)}
+  .label-demo h3{font-size:28px}
+  .label-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:18px;font-size:13px}
+  .label-grid div{border-top:1px solid rgba(0,0,0,.15);padding-top:8px}
+  .checklist{display:grid;gap:12px;margin-top:26px}
+  .check{display:flex;gap:14px;align-items:flex-start;font-size:17px;color:#dce5df}
+  .check i{font-style:normal;width:30px;height:30px;border-radius:10px;display:grid;place-items:center;background:rgba(105,228,156,.12);color:var(--green);border:1px solid rgba(105,228,156,.24);flex:none}
+  .big-quote{font-size:clamp(32px,4.5vw,72px);line-height:1.03;letter-spacing:-.04em;max-width:1100px}
+  .question{font-size:clamp(62px,12vw,180px);line-height:.8;color:var(--green);font-weight:900;letter-spacing:-.08em}
+  .progress{position:fixed;right:28px;top:50%;transform:translateY(-50%);display:grid;gap:8px;z-index:15}
+  .progress button{width:7px;height:7px;border-radius:50%;border:0;background:rgba(255,255,255,.24);padding:0;cursor:pointer;transition:.25s}
+  .progress button.active{height:24px;border-radius:8px;background:var(--green)}
+  .progressline{position:fixed;left:0;bottom:0;height:3px;width:0;background:linear-gradient(90deg,var(--green),var(--lime));z-index:15}
+  .badge-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:24px}
+  .source-note{font-size:11px;color:#738179;max-width:700px;line-height:1.45}
+  .tinychart{width:100%;height:250px;overflow:visible}
+  .tinychart .axis{stroke:rgba(255,255,255,.15);stroke-width:1}
+  .tinychart .trend{fill:none;stroke:var(--green);stroke-width:5;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:1000;stroke-dashoffset:1000}
+  .tinychart circle{fill:#0a140f;stroke:var(--green);stroke-width:4;opacity:0}
+  .mini-kpi{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:24px}
+  .mini-kpi .card{padding:18px}
+  .mini-kpi strong{font-size:28px}
+  .split-title{display:flex;align-items:flex-end;justify-content:space-between;gap:20px}
+  .split-title .tagline{max-width:330px;color:var(--muted);font-size:15px;line-height:1.5}
+  @media (max-width: 900px){
+    .slide{padding:6vh 7vw 8vh}
+    .grid2{grid-template-columns:1fr;gap:28px}
+    .grid3,.grid4{grid-template-columns:1fr 1fr}
+    .timeline{grid-template-columns:1fr;gap:12px}
+    .timeline:before{display:none}
+    .step{text-align:left;display:grid;grid-template-columns:58px 1fr;gap:14px;align-items:center}
+    .step .n{margin:0}
+    .haccp{grid-template-columns:1fr}
+    .progress{display:none}
+    .ring{width:230px}
+    .thermo{height:220px}
+  }
+  @media (max-width: 600px){
+    h1{font-size:48px} h2{font-size:40px}
+    .grid3,.grid4{grid-template-columns:1fr}
+    .slide{padding:5vh 6vw 9vh}
+    .footer .hint{display:none}
+    .bar-row{grid-template-columns:105px 1fr 42px}
+    .label-demo{transform:none}
+  }
+</style>
+</head>
+<body>
+<div class="noise"></div>
+<div class="ambient">
+  <div class="orb a"></div><div class="orb b"></div><div class="orb c"></div>
+</div>
+
+<div class="deck" id="deck">
+
+  <section class="slide active" data-title="Титульный">
+    <div class="topbar"><div class="kicker">Food Quality Control</div><div class="slide-no">01 / 18</div></div>
+    <div class="content">
+      <div class="pill intro-pill"><span class="dot"></span> Безопасность • свежесть • доверие</div>
+      <h1 class="reveal" style="margin-top:24px">Качество<br><span class="accent">продуктов питания</span><br>и его контроль</h1>
+      <p class="lead reveal">Как продукт проходит путь от сырья до тарелки — и где именно качество можно потерять или сохранить.</p>
+    </div>
+    <div class="footer"><div>Учебная интерактивная презентация</div><div class="hint"><span class="key">←</span><span class="key">→</span><span class="key">Space</span><span>навигация</span></div></div>
+  </section>
+
+  <section class="slide" data-title="Почему это важно">
+    <div class="topbar"><div class="kicker">01 — Значение</div><div class="slide-no">02 / 18</div></div>
+    <div class="content grid2">
+      <div>
+        <h2 class="reveal">Качество — это не только <span class="accent">вкус</span></h2>
+        <p class="lead reveal">Оно напрямую влияет на здоровье человека, срок хранения, доверие к производителю и потери бизнеса.</p>
+        <div class="badge-row reveal">
+          <span class="pill">здоровье</span><span class="pill">репутация</span><span class="pill">экономика</span><span class="pill">экспорт</span>
+        </div>
+      </div>
+      <div class="card reveal">
+        <div class="metric counter" data-to="4">0</div>
+        <div class="metric-label">главных вопроса к любому продукту</div>
+        <div class="checklist">
+          <div class="check"><i>✓</i><span>Он безопасен?</span></div>
+          <div class="check"><i>✓</i><span>Он свежий?</span></div>
+          <div class="check"><i>✓</i><span>Он соответствует заявленному составу?</span></div>
+          <div class="check"><i>✓</i><span>Он правильно хранился?</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="footer"><div>Качество начинается раньше, чем продукт попадает на полку.</div></div>
+  </section>
+
+  <section class="slide" data-title="Что такое качество">
+    <div class="topbar"><div class="kicker">02 — Определение</div><div class="slide-no">03 / 18</div></div>
+    <div class="content">
+      <div class="split-title">
+        <h2 class="reveal">Что такое <span class="accent">качество продукта?</span></h2>
+        <p class="tagline reveal">Совокупность свойств, благодаря которым продукт безопасен, полезен, стабилен и соответствует ожиданиям потребителя.</p>
+      </div>
+      <div class="grid4">
+        <div class="card reveal"><div class="icon">👅</div><h3>Органолептика</h3><p>Вкус, запах, цвет, внешний вид и текстура.</p></div>
+        <div class="card reveal"><div class="icon">🧬</div><h3>Состав</h3><p>Пищевая ценность, ингредиенты, отсутствие фальсификации.</p></div>
+        <div class="card reveal"><div class="icon">🛡️</div><h3>Безопасность</h3><p>Отсутствие опасных микроорганизмов, токсинов и примесей.</p></div>
+        <div class="card reveal"><div class="icon">📦</div><h3>Стабильность</h3><p>Срок годности, сохранность свойств при хранении и перевозке.</p></div>
+      </div>
+    </div>
+    <div class="footer"><div>Хороший продукт должен пройти сразу несколько «фильтров качества».</div></div>
+  </section>
+
+  <section class="slide" data-title="Показатели качества">
+    <div class="topbar"><div class="kicker">03 — Показатели</div><div class="slide-no">04 / 18</div></div>
+    <div class="content grid2">
+      <div>
+        <h2 class="reveal">Качество можно <span class="accent">измерять</span></h2>
+        <p class="lead reveal">Для разных продуктов важны разные показатели, но логика контроля одинакова: измерить → сравнить с нормой → принять решение.</p>
+      </div>
+      <div class="bars">
+        <div class="bar-row reveal"><span>Безопасность</span><div class="track"><div class="fill" data-width="96%"></div></div><b>№1</b></div>
+        <div class="bar-row reveal"><span>Свежесть</span><div class="track"><div class="fill" data-width="88%"></div></div><b>№2</b></div>
+        <div class="bar-row reveal"><span>Состав</span><div class="track"><div class="fill" data-width="82%"></div></div><b>№3</b></div>
+        <div class="bar-row reveal"><span>Внешний вид</span><div class="track"><div class="fill" data-width="69%"></div></div><b>№4</b></div>
+        <div class="bar-row reveal"><span>Упаковка</span><div class="track"><div class="fill" data-width="62%"></div></div><b>№5</b></div>
+      </div>
+    </div>
+    <div class="footer"><div>Ранжирование на слайде — иллюстративное: конкретные критерии зависят от продукта и стандарта.</div></div>
+  </section>
+
+  <section class="slide" data-title="Качество и безопасность">
+    <div class="topbar"><div class="kicker">04 — Главное различие</div><div class="slide-no">05 / 18</div></div>
+    <div class="content grid2">
+      <div class="reveal">
+        <div class="ring"><div class="ring-inner"><strong>100%</strong><small>безопасность обязательна</small></div></div>
+      </div>
+      <div>
+        <h2 class="reveal">Безопасность ≠ <span class="orange">высокое качество</span></h2>
+        <p class="lead reveal">Продукт может быть безопасным, но невкусным, сухим или некрасивым. Но продукт высокого качества не может считаться качественным, если он опасен.</p>
+        <div class="card reveal" style="margin-top:24px">
+          <h3>Логика контроля</h3>
+          <p><b class="accent">Сначала:</b> безопасность. <b class="orange">Затем:</b> стабильность, вкус, внешний вид, питательная ценность и потребительские свойства.</p>
+        </div>
+      </div>
+    </div>
+    <div class="footer"><div>Безопасность — базовое условие допуска продукта к потребителю.</div></div>
+  </section>
+
+  <section class="slide" data-title="Виды опасностей">
+    <div class="topbar"><div class="kicker">05 — Риски</div><div class="slide-no">06 / 18</div></div>
+    <div class="content">
+      <h2 class="reveal">Три основные группы <span class="accent">опасностей</span></h2>
+      <div class="grid3">
+        <div class="card hazard bio reveal"><div class="icon">🦠</div><h3>Биологические</h3><p>Бактерии, вирусы, паразиты, плесень и их токсины.</p></div>
+        <div class="card hazard chem reveal"><div class="icon">⚗️</div><h3>Химические</h3><p>Пестициды, тяжелые металлы, моющие средства, избыток добавок.</p></div>
+        <div class="card hazard phys reveal"><div class="icon">🔩</div><h3>Физические</h3><p>Стекло, металл, пластик, камни, части упаковки и другие посторонние предметы.</p></div>
+      </div>
+    </div>
+    <div class="footer"><div>Задача системы контроля — не только обнаружить опасность, но и предупредить её появление.</div></div>
+  </section>
+
+  <section class="slide" data-title="Биологические риски">
+    <div class="topbar"><div class="kicker">06 — Биологический фактор</div><div class="slide-no">07 / 18</div></div>
+    <div class="content grid2">
+      <div>
+        <h2 class="reveal">Микроорганизмы любят <span class="red">ошибки</span></h2>
+        <p class="lead reveal">Нарушение температуры, грязные поверхности и смешивание сырого с готовым создают условия для быстрого роста опасных микроорганизмов.</p>
+        <div class="mini-kpi">
+          <div class="card reveal"><strong>01</strong><p>грязные руки и инвентарь</p></div>
+          <div class="card reveal"><strong>02</strong><p>нарушение холода</p></div>
+          <div class="card reveal"><strong>03</strong><p>недостаточная термообработка</p></div>
+        </div>
+      </div>
+      <div class="card reveal">
+        <svg class="tinychart" viewBox="0 0 520 260" aria-label="условный рост микроорганизмов">
+          <line x1="45" y1="220" x2="490" y2="220" class="axis"/><line x1="45" y1="20" x2="45" y2="220" class="axis"/>
+          <path class="trend" d="M55,205 C120,204 155,195 205,175 C260,153 295,120 340,90 C390,57 430,39 485,28"/>
+          <circle cx="205" cy="175" r="7"/><circle cx="340" cy="90" r="7"/><circle cx="485" cy="28" r="7"/>
+        </svg>
+        <p class="muted" style="margin-top:10px">Условная схема: при благоприятных условиях рост микроорганизмов ускоряется.</p>
+      </div>
+    </div>
+    <div class="footer"><div>Профилактика всегда дешевле, чем отзыв продукции или лечение последствий.</div></div>
+  </section>
+
+  <section class="slide" data-title="Химические риски">
+    <div class="topbar"><div class="kicker">07 — Химический фактор</div><div class="slide-no">08 / 18</div></div>
+    <div class="content">
+      <h2 class="reveal">Химические риски часто <span class="orange">невидимы</span></h2>
+      <div class="grid4">
+        <div class="card reveal"><div class="icon">🌱</div><h3>Пестициды</h3><p>Контролируют остаточные количества и соблюдение регламентов применения.</p></div>
+        <div class="card reveal"><div class="icon">🧪</div><h3>Моющие вещества</h3><p>Опасны при неправильном ополаскивании оборудования и тары.</p></div>
+        <div class="card reveal"><div class="icon">⛏️</div><h3>Тяжёлые металлы</h3><p>Могут попадать из среды, воды, сырья и технологического оборудования.</p></div>
+        <div class="card reveal"><div class="icon">🏷️</div><h3>Добавки</h3><p>Должны применяться только в разрешённых пределах и быть корректно указаны.</p></div>
+      </div>
+    </div>
+    <div class="footer"><div>Химический контроль требует лабораторных методов и прослеживаемости сырья.</div></div>
+  </section>
+
+  <section class="slide" data-title="Физические риски">
+    <div class="topbar"><div class="kicker">08 — Физический фактор</div><div class="slide-no">09 / 18</div></div>
+    <div class="content grid2">
+      <div>
+        <h2 class="reveal">То, чего в продукте <span class="cyan">не должно быть</span></h2>
+        <p class="lead reveal">Посторонние предметы могут травмировать потребителя. Поэтому на производстве используют фильтры, сита, металлодетекторы, визуальный и рентген‑контроль.</p>
+      </div>
+      <div class="grid2" style="gap:14px">
+        <div class="card reveal"><div class="icon">🧲</div><h3>Металлодетектор</h3><p>Обнаруживает металлические фрагменты.</p></div>
+        <div class="card reveal"><div class="icon">🔍</div><h3>Визуальный контроль</h3><p>Выявляет дефекты упаковки и загрязнения.</p></div>
+        <div class="card reveal"><div class="icon">🧺</div><h3>Сита и фильтры</h3><p>Отделяют крупные посторонние частицы.</p></div>
+        <div class="card reveal"><div class="icon">📡</div><h3>Рентген‑контроль</h3><p>Может находить плотные инородные включения.</p></div>
+      </div>
+    </div>
+    <div class="footer"><div>Контроль строится по принципу нескольких защитных барьеров.</div></div>
+  </section>
+
+  <section class="slide" data-title="Контроль по цепочке">
+    <div class="topbar"><div class="kicker">09 — От поля до стола</div><div class="slide-no">10 / 18</div></div>
+    <div class="content">
+      <h2 class="reveal">Контроль работает только как <span class="accent">цепочка</span></h2>
+      <div class="timeline">
+        <div class="step reveal"><div class="n">01</div><div><h3>Сырьё</h3><p>Поставщик, документы, внешний осмотр, лабораторные показатели.</p></div></div>
+        <div class="step reveal"><div class="n">02</div><div><h3>Производство</h3><p>Температура, санитария, рецептура, критические точки.</p></div></div>
+        <div class="step reveal"><div class="n">03</div><div><h3>Упаковка</h3><p>Герметичность, маркировка, дата, прослеживаемость партии.</p></div></div>
+        <div class="step reveal"><div class="n">04</div><div><h3>Логистика</h3><p>Температурный режим, чистота транспорта, сроки доставки.</p></div></div>
+        <div class="step reveal"><div class="n">05</div><div><h3>Продажа</h3><p>Хранение, ротация товара, состояние витрин и холодильников.</p></div></div>
+      </div>
+    </div>
+    <div class="footer"><div>Если одно звено нарушено — качество всей партии может быть потеряно.</div></div>
+  </section>
+
+  <section class="slide" data-title="HACCP">
+    <div class="topbar"><div class="kicker">10 — Системный подход</div><div class="slide-no">11 / 18</div></div>
+    <div class="content grid2">
+      <div>
+        <div class="pill reveal"><span class="dot"></span> HACCP</div>
+        <h2 class="reveal" style="margin-top:18px">Не искать проблему в конце — <span class="accent">предотвращать её заранее</span></h2>
+        <p class="lead reveal">HACCP — система анализа опасностей и контроля критических точек процесса.</p>
+      </div>
+      <div class="haccp">
+        <div class="item reveal"><b>1</b><span>Определить потенциальные опасности.</span></div>
+        <div class="item reveal"><b>2</b><span>Найти критические контрольные точки.</span></div>
+        <div class="item reveal"><b>3</b><span>Установить критические пределы.</span></div>
+        <div class="item reveal"><b>4</b><span>Организовать мониторинг.</span></div>
+        <div class="item reveal"><b>5</b><span>Определить корректирующие действия.</span></div>
+        <div class="item reveal"><b>6</b><span>Проверять эффективность системы.</span></div>
+        <div class="item reveal"><b>7</b><span>Вести документацию и записи.</span></div>
+      </div>
+    </div>
+    <div class="footer"><div>HACCP фокусируется на профилактике, а не только на проверке готового продукта.</div></div>
+  </section>
+
+  <section class="slide" data-title="Критическая точка">
+    <div class="topbar"><div class="kicker">11 — Пример</div><div class="slide-no">12 / 18</div></div>
+    <div class="content grid2">
+      <div>
+        <h2 class="reveal">Пример критической точки: <span class="orange">нагрев</span></h2>
+        <p class="lead reveal">Если термообработка недостаточна, опасные микроорганизмы могут выжить. Поэтому контролируют температуру, время и стабильность процесса.</p>
+        <div class="card reveal" style="margin-top:24px">
+          <h3>Алгоритм</h3>
+          <p>Измерить → сравнить с установленным пределом → зафиксировать → при отклонении остановить или скорректировать процесс.</p>
+        </div>
+      </div>
+      <div class="thermo reveal"><div class="tube"><div class="level"></div></div></div>
+    </div>
+    <div class="footer"><div>Точные критические пределы зависят от продукта, технологии и действующих требований.</div></div>
+  </section>
+
+  <section class="slide" data-title="Лабораторный контроль">
+    <div class="topbar"><div class="kicker">12 — Лаборатория</div><div class="slide-no">13 / 18</div></div>
+    <div class="content grid2">
+      <div>
+        <h2 class="reveal">То, что нельзя увидеть глазами, проверяет <span class="accent">лаборатория</span></h2>
+        <p class="lead reveal">Лабораторный анализ подтверждает безопасность, состав, подлинность и стабильность продукта.</p>
+      </div>
+      <div class="lab-list">
+        <div class="lab-item reveal"><div class="icon" style="margin:0">🧫</div><div><h3>Микробиология</h3><p class="muted">Бактерии, дрожжи, плесень.</p></div><span class="tag">культура / ПЦР</span></div>
+        <div class="lab-item reveal"><div class="icon" style="margin:0">⚗️</div><div><h3>Химический анализ</h3><p class="muted">Состав, примеси, остаточные вещества.</p></div><span class="tag">хроматография</span></div>
+        <div class="lab-item reveal"><div class="icon" style="margin:0">🥛</div><div><h3>Физико‑химия</h3><p class="muted">Кислотность, влажность, жирность, плотность.</p></div><span class="tag">измерения</span></div>
+        <div class="lab-item reveal"><div class="icon" style="margin:0">👃</div><div><h3>Сенсорная оценка</h3><p class="muted">Вкус, запах, цвет, консистенция.</p></div><span class="tag">экспертная оценка</span></div>
+      </div>
+    </div>
+    <div class="footer"><div>Результат анализа имеет смысл только при правильном отборе и хранении образца.</div></div>
+  </section>
+
+  <section class="slide" data-title="Маркировка">
+    <div class="topbar"><div class="kicker">13 — Информация для потребителя</div><div class="slide-no">14 / 18</div></div>
+    <div class="content grid2">
+      <div>
+        <h2 class="reveal">Этикетка — это <span class="accent">паспорт продукта</span></h2>
+        <p class="lead reveal">Покупатель должен иметь возможность понять, что внутри, кто произвёл продукт, как его хранить и до какой даты использовать.</p>
+        <div class="checklist">
+          <div class="check reveal"><i>✓</i><span>Наименование и состав</span></div>
+          <div class="check reveal"><i>✓</i><span>Аллергены и пищевая ценность</span></div>
+          <div class="check reveal"><i>✓</i><span>Дата изготовления и срок годности</span></div>
+          <div class="check reveal"><i>✓</i><span>Условия хранения и изготовитель</span></div>
+        </div>
+      </div>
+      <div class="label-demo reveal">
+        <div style="font-size:12px;letter-spacing:.15em;text-transform:uppercase;opacity:.6">пример этикетки</div>
+        <h3 style="margin-top:10px">Йогурт натуральный</h3>
+        <div class="label-grid">
+          <div><b>Состав</b><br>молоко, закваска</div>
+          <div><b>Масса</b><br>180 г</div>
+          <div><b>Хранить</b><br>в холодильнике</div>
+          <div><b>Партия</b><br>прослеживаемый код</div>
+          <div><b>Дата</b><br>указана на упаковке</div>
+          <div><b>Изготовитель</b><br>указан полностью</div>
+        </div>
+      </div>
+    </div>
+    <div class="footer"><div>Чем прозрачнее маркировка, тем легче потребителю сделать осознанный выбор.</div></div>
+  </section>
+
+  <section class="slide" data-title="Хранение и холодовая цепь">
+    <div class="topbar"><div class="kicker">14 — Хранение</div><div class="slide-no">15 / 18</div></div>
+    <div class="content">
+      <h2 class="reveal">Качество можно потерять <span class="cyan">после производства</span></h2>
+      <p class="lead reveal">Даже качественный продукт портится, если нарушены температура, влажность, герметичность или сроки.</p>
+      <div class="timeline">
+        <div class="step reveal"><div class="n">🏭</div><div><h3>Производство</h3><p>Контроль охлаждения перед отгрузкой.</p></div></div>
+        <div class="step reveal"><div class="n">🚚</div><div><h3>Транспорт</h3><p>Стабильный режим и регистрация температуры.</p></div></div>
+        <div class="step reveal"><div class="n">📦</div><div><h3>Склад</h3><p>Разделение сырья и готовой продукции.</p></div></div>
+        <div class="step reveal"><div class="n">🛒</div><div><h3>Магазин</h3><p>Исправные витрины и ротация товара.</p></div></div>
+        <div class="step reveal"><div class="n">🏠</div><div><h3>Дом</h3><p>Потребитель продолжает холодовую цепь.</p></div></div>
+      </div>
+    </div>
+    <div class="footer"><div>Холодовая цепь эффективна только тогда, когда она непрерывна.</div></div>
+  </section>
+
+  <section class="slide" data-title="Стандарты">
+    <div class="topbar"><div class="kicker">15 — Системы и стандарты</div><div class="slide-no">16 / 18</div></div>
+    <div class="content">
+      <h2 class="reveal">Контроль опирается на <span class="accent">правила и стандарты</span></h2>
+      <div class="grid3">
+        <div class="card reveal"><div class="icon">🌍</div><h3>Codex Alimentarius</h3><p>Международные рекомендации FAO/WHO по безопасности и справедливой торговле пищевыми продуктами.</p></div>
+        <div class="card reveal"><div class="icon">⚙️</div><h3>ISO 22000</h3><p>Система менеджмента безопасности пищевой продукции для организаций по всей цепочке.</p></div>
+        <div class="card reveal"><div class="icon">🧩</div><h3>HACCP</h3><p>Практический подход к анализу опасностей и контролю критических точек.</p></div>
+      </div>
+      <p class="source-note reveal" style="margin-top:18px">В конкретной стране дополнительно действуют национальные санитарные, технические и маркировочные требования.</p>
+    </div>
+    <div class="footer"><div>Система качества объединяет технологии, персонал, документы, лабораторию и постоянный контроль.</div></div>
+  </section>
+
+  <section class="slide" data-title="Что проверяет покупатель">
+    <div class="topbar"><div class="kicker">16 — Потребитель</div><div class="slide-no">17 / 18</div></div>
+    <div class="content grid2">
+      <div>
+        <h2 class="reveal">Контроль заканчивается… <span class="accent">у покупателя</span></h2>
+        <p class="lead reveal">Потребитель тоже может быстро оценить часть признаков качества до покупки.</p>
+      </div>
+      <div class="checklist">
+        <div class="check reveal"><i>1</i><span>Проверить срок годности и условия хранения.</span></div>
+        <div class="check reveal"><i>2</i><span>Осмотреть упаковку: без вздутия, течи, повреждений.</span></div>
+        <div class="check reveal"><i>3</i><span>Прочитать состав, аллергены и данные изготовителя.</span></div>
+        <div class="check reveal"><i>4</i><span>Не покупать скоропортящийся товар из явно тёплой витрины.</span></div>
+        <div class="check reveal"><i>5</i><span>После покупки соблюдать режим хранения дома.</span></div>
+      </div>
+    </div>
+    <div class="footer"><div>Осознанный потребитель — ещё один уровень защиты качества.</div></div>
+  </section>
+
+  <section class="slide" data-title="Вывод">
+    <div class="topbar"><div class="kicker">17 — Вывод</div><div class="slide-no">18 / 18</div></div>
+    <div class="content">
+      <div class="question reveal">?</div>
+      <p class="big-quote reveal">Качество продукта — это результат <span class="accent">системы</span>, а не одной проверки в конце.</p>
+      <p class="lead reveal">Сырьё → производство → упаковка → перевозка → хранение → продажа → потребитель. На каждом этапе нужен свой контроль.</p>
+      <div class="badge-row reveal">
+        <span class="pill">безопасность</span><span class="pill">прослеживаемость</span><span class="pill">HACCP</span><span class="pill">лаборатория</span><span class="pill">ответственность</span>
+      </div>
+    </div>
+    <div class="footer"><div>Спасибо за внимание</div><div>WHO • FAO • Codex Alimentarius • ISO 22000</div></div>
+  </section>
+
+</div>
+
+<div class="progress" id="progress"></div>
+<div class="progressline" id="progressline"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/animejs@3.2.2/lib/anime.min.js"></script>
+<script>
+(() => {
+  const slides = [...document.querySelectorAll('.slide')];
+  const progress = document.getElementById('progress');
+  const progressline = document.getElementById('progressline');
+  let index = 0, busy = false, wheelLock = false, touchStartY = null;
+
+  slides.forEach((_,i)=>{
+    const b = document.createElement('button');
+    b.setAttribute('aria-label', `Слайд ${i+1}`);
+    b.addEventListener('click', ()=>go(i));
+    progress.appendChild(b);
+  });
+  const dots = [...progress.children];
+
+  function setProgress(){
+    dots.forEach((d,i)=>d.classList.toggle('active', i===index));
+    progressline.style.width = `${((index+1)/slides.length)*100}%`;
+  }
+
+  function resetElements(slide){
+    slide.querySelectorAll('.reveal').forEach(el=>{ el.style.opacity=0; el.style.transform='translateY(28px)'; });
+    slide.querySelectorAll('.fill').forEach(el=>el.style.width='0');
+    slide.querySelectorAll('.trend').forEach(el=>el.style.strokeDashoffset='1000');
+    slide.querySelectorAll('.tinychart circle').forEach(el=>el.style.opacity='0');
+    const level = slide.querySelector('.thermo .level'); if(level) level.style.height='0';
+  }
+
+  function animateSlide(slide){
+    if(!window.anime){
+      slide.querySelectorAll('.reveal').forEach(el=>{ el.style.opacity=1; el.style.transform='none'; });
+      slide.querySelectorAll('.fill').forEach(el=>el.style.width=el.dataset.width || '70%');
+      return;
+    }
+
+    anime({
+      targets: slide.querySelectorAll('.reveal'),
+      opacity:[0,1],
+      translateY:[28,0],
+      delay: anime.stagger(85, {start:120}),
+      duration: 760,
+      easing:'easeOutExpo'
+    });
+
+    slide.querySelectorAll('.counter').forEach(el=>{
+      const to = +el.dataset.to;
+      const obj={v:0};
+      anime({targets:obj,v:to,round:1,duration:1000,easing:'easeOutExpo',
+        update:()=> el.textContent=obj.v
+      });
+    });
+
+    slide.querySelectorAll('.fill').forEach((el,i)=>{
+      anime({targets:el,width:el.dataset.width || '70%',duration:1100,delay:320+i*90,easing:'easeOutExpo'});
+    });
+
+    const trend = slide.querySelector('.trend');
+    if(trend){
+      anime({targets:trend,strokeDashoffset:[1000,0],duration:1600,delay:350,easing:'easeInOutSine'});
+      anime({targets:slide.querySelectorAll('.tinychart circle'),opacity:[0,1],scale:[0,1],delay:anime.stagger(180,{start:1050}),duration:500,easing:'easeOutBack'});
+    }
+    const level = slide.querySelector('.thermo .level');
+    if(level) anime({targets:level,height:['0%','78%'],duration:1400,delay:350,easing:'easeInOutQuart'});
+  }
+
+  function go(next){
+    if(busy || next===index || next<0 || next>=slides.length) return;
+    busy = true;
+    const out = slides[index], incoming = slides[next];
+    resetElements(incoming);
+    incoming.style.visibility='visible';
+    incoming.classList.add('active');
+
+    if(!window.anime){
+      out.classList.remove('active'); index=next; setProgress(); animateSlide(incoming); busy=false; return;
+    }
+
+    const dir = next>index ? 1 : -1;
+    anime.timeline({
+      complete:()=>{
+        out.classList.remove('active');
+        out.style.opacity='';
+        out.style.transform='';
+        index=next;
+        setProgress();
+        animateSlide(incoming);
+        busy=false;
+      }
+    })
+    .add({targets:out,opacity:[1,0],translateY:[0,-28*dir],scale:[1,.985],duration:420,easing:'easeInQuad'})
+    .add({targets:incoming,opacity:[0,1],translateY:[32*dir,0],scale:[.985,1],duration:650,easing:'easeOutExpo'},'-=120');
+
+    anime({targets:'.orb.a',translateX:()=>anime.random(-60,60),translateY:()=>anime.random(-40,40),duration:1400,easing:'easeInOutSine'});
+    anime({targets:'.orb.b',translateX:()=>anime.random(-50,50),translateY:()=>anime.random(-50,50),duration:1400,easing:'easeInOutSine'});
+  }
+
+  function next(){ if(index<slides.length-1) go(index+1); }
+  function prev(){ if(index>0) go(index-1); }
+
+  document.addEventListener('keydown',e=>{
+    if(['ArrowRight','ArrowDown','PageDown',' '].includes(e.key)){ e.preventDefault(); next(); }
+    if(['ArrowLeft','ArrowUp','PageUp'].includes(e.key)){ e.preventDefault(); prev(); }
+    if(e.key==='Home') go(0);
+    if(e.key==='End') go(slides.length-1);
+  });
+
+  document.addEventListener('wheel',e=>{
+    if(wheelLock || Math.abs(e.deltaY)<12) return;
+    wheelLock=true;
+    e.deltaY>0 ? next() : prev();
+    setTimeout(()=>wheelLock=false,650);
+  },{passive:true});
+
+  document.addEventListener('touchstart',e=>{ touchStartY=e.touches[0].clientY; },{passive:true});
+  document.addEventListener('touchend',e=>{
+    if(touchStartY===null) return;
+    const dy=e.changedTouches[0].clientY-touchStartY;
+    if(Math.abs(dy)>45) dy<0 ? next() : prev();
+    touchStartY=null;
+  },{passive:true});
+
+  // Mouse parallax
+  document.addEventListener('mousemove',e=>{
+    const x=(e.clientX/innerWidth-.5), y=(e.clientY/innerHeight-.5);
+    document.querySelector('.orb.c').style.transform=`translate(${x*50}px,${y*35}px)`;
+  });
+
+  resetElements(slides[0]);
+  setProgress();
+  setTimeout(()=>animateSlide(slides[0]),180);
+})();
+</script>
+</body>
+</html>
